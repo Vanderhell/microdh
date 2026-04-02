@@ -14,7 +14,7 @@ static void hex_to_bytes(uint8_t out[32], const char *hex) {
     }
 }
 
-static void deterministic_rng_a(uint8_t *buf, size_t len) {
+static mdh_err_t deterministic_rng_a(uint8_t *buf, size_t len) {
     static uint8_t state = 0x10;
     size_t i;
 
@@ -23,9 +23,10 @@ static void deterministic_rng_a(uint8_t *buf, size_t len) {
     }
 
     state = (uint8_t)(state + 0x31U);
+    return MDH_OK;
 }
 
-static void deterministic_rng_b(uint8_t *buf, size_t len) {
+static mdh_err_t deterministic_rng_b(uint8_t *buf, size_t len) {
     static uint8_t state = 0x80;
     size_t i;
 
@@ -34,6 +35,12 @@ static void deterministic_rng_b(uint8_t *buf, size_t len) {
     }
 
     state = (uint8_t)(state + 0x19U);
+    return MDH_OK;
+}
+
+static mdh_err_t failing_rng(uint8_t *buf, size_t len) {
+    memset(buf, 0xA5, len);
+    return MDH_ERR_RNG;
 }
 
 static int is_all_zero(const uint8_t *buf, size_t len) {
@@ -131,6 +138,59 @@ static void test_06_clamp(void) {
     MTEST_ASSERT((kp.privkey[31] & 0x40U) == 0x40U);
 }
 
+static void test_07_rng_failure_propagation(void) {
+    mdh_keypair_t kp;
+
+    memset(&kp, 0x5A, sizeof(kp));
+    MTEST_ASSERT_EQ_INT(mdh_generate_keypair(&kp, failing_rng), MDH_ERR_RNG);
+    MTEST_ASSERT(is_all_zero(kp.privkey, 32U));
+    MTEST_ASSERT(is_all_zero(kp.pubkey, 32U));
+}
+
+static void test_08_reject_small_subgroup_points(void) {
+    mdh_keypair_t kp;
+    uint8_t shared[32];
+    static const uint8_t weak_remote_1[32] = {
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+    static const uint8_t weak_remote_2[32] = {
+        0xe0, 0xeb, 0x7a, 0x7c, 0x3b, 0x41, 0xb8, 0xae,
+        0x16, 0x56, 0xe3, 0xfa, 0xf1, 0x9f, 0xc4, 0x6a,
+        0xda, 0x09, 0x8d, 0xeb, 0x9c, 0x32, 0xb1, 0xfd,
+        0x86, 0x62, 0x05, 0x16, 0x5f, 0x49, 0xb8, 0x00
+    };
+
+    MTEST_ASSERT_EQ_INT(mdh_generate_keypair(&kp, deterministic_rng_a), MDH_OK);
+    MTEST_ASSERT_EQ_INT(mdh_shared_secret(kp.privkey, weak_remote_1, shared), MDH_ERR_WEAK_KEY);
+    MTEST_ASSERT_EQ_INT(mdh_shared_secret(kp.privkey, weak_remote_2, shared), MDH_ERR_WEAK_KEY);
+}
+
+static void test_09_zeroization(void) {
+    mdh_keypair_t a;
+    mdh_keypair_t b;
+    uint8_t shared[32];
+
+    MTEST_ASSERT_EQ_INT(mdh_generate_keypair(&a, deterministic_rng_a), MDH_OK);
+    MTEST_ASSERT_EQ_INT(mdh_generate_keypair(&b, deterministic_rng_b), MDH_OK);
+
+    mdh_test_reset_wipes();
+    MTEST_ASSERT_EQ_INT(mdh_shared_secret(a.privkey, b.pubkey, shared), MDH_OK);
+
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_SCALAR, 32U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_X1, sizeof(int64_t) * 16U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_A, sizeof(int64_t) * 16U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_B, sizeof(int64_t) * 16U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_C, sizeof(int64_t) * 16U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_D, sizeof(int64_t) * 16U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_E, sizeof(int64_t) * 16U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_F, sizeof(int64_t) * 16U));
+    MTEST_ASSERT(mdh_test_wipe_was_zeroed(MDH_TEST_WIPE_SHARED_SECRET, 32U));
+    MTEST_ASSERT(!is_all_zero(shared, 32U));
+}
+
 int main(void) {
     MTEST_RUN(test_01_rfc7748_vectors);
     MTEST_RUN(test_02_generate_keypair);
@@ -138,5 +198,8 @@ int main(void) {
     MTEST_RUN(test_04_weak_key);
     MTEST_RUN(test_05_zero_key);
     MTEST_RUN(test_06_clamp);
+    MTEST_RUN(test_07_rng_failure_propagation);
+    MTEST_RUN(test_08_reject_small_subgroup_points);
+    MTEST_RUN(test_09_zeroization);
     return mtest_finish();
 }
