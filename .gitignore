@@ -1,0 +1,10 @@
+build/
+*.o
+*.a
+*.exe
+.vscode/
+.idea/
+*.DS_Store
+build/
+build_clang/
+build_ninja/

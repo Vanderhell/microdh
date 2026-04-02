@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y cmake gcc
+
+      - name: Build & Test
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DMDH_BUILD_TESTS=ON
+          cmake --build build --parallel
+          cd build && ctest --output-on-failure
+
+      - name: Create archive
+        run: |
+          mkdir -p release/microdh
+          cp -r include src docs LICENSE README.md CMakeLists.txt release/microdh/
+          cd release
+          tar -czf microdh-${{ github.ref_name }}.tar.gz microdh/
+          zip -r microdh-${{ github.ref_name }}.zip microdh/
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/microdh-${{ github.ref_name }}.tar.gz
+            release/microdh-${{ github.ref_name }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
