@@ -2,6 +2,31 @@
 
 This file contains only commands and results executed during this task.
 
+## Aggregate audit
+
+Verified across the current repository state:
+
+- GCC Debug and Release fast verification passed.
+- Clang Debug and Release fast verification passed.
+- Windows/MSVC Debug fast verification passed.
+- OpenSSL oracle verification passed locally with the usable backend.
+- CLANG64 ASan+UBSan sanitizer verification passed.
+- cppcheck passed.
+- clang-tidy passed without configuration-read errors.
+- ARM Cortex-M0 and Cortex-M4 compile/link smoke passed.
+- Footprint evidence was collected with stack-usage output and library size measurements.
+- The RFC 7748 1,000,000-iteration slow test completed successfully.
+- The worktree was clean after checkpoint commit `3f36f9e`.
+
+Not verified across the current repository state:
+
+- GitHub Actions or other remote CI was not run from this environment.
+- No independent external audit or formal proof was performed.
+- No hardware execution was performed for the ARM smoke checks.
+- No release commit has been created.
+- No annotated release tag has been created.
+- No release artifact publication was performed.
+
 ## Baseline
 
 - `git status --short` -> `?? prompts/`
@@ -57,8 +82,8 @@ This file contains only commands and results executed during this task.
 ## Notes
 
 - The differential oracle path passed with the local OpenSSL backend.
-- The 1,000,000-iteration slow test target exists, but the completed run in this task timed out and is not verified.
-- GCC, clang-tidy, cppcheck, sanitizer, ARM, and release/tag evidence remain not verified unless explicitly listed above.
+- The RFC 7748 1,000,000-iteration slow test passed in `794.6 sec`.
+- Release commit, annotated tag, and remote CI remain unperformed in this repository state unless listed above.
 
 ## MSYS2 toolchain
 
