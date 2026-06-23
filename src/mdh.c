@@ -1,20 +1,38 @@
 #include "mdh.h"
 
-#include <stdint.h>
+#include <limits.h>
 #include <string.h>
+
+#if CHAR_BIT != 8
+#error "microdh requires 8-bit bytes"
+#endif
+
+#if ((-1) >> 1) != -1
+#error "microdh requires arithmetic right shift for signed integers"
+#endif
+
+#if ~0 != -1
+#error "microdh requires two's-complement signed integers"
+#endif
+
+typedef char mdh_check_uint8_size[(sizeof(uint8_t) == 1) ? 1 : -1];
+typedef char mdh_check_uint32_size[(sizeof(uint32_t) == 4) ? 1 : -1];
+typedef char mdh_check_int64_size[(sizeof(int64_t) == 8) ? 1 : -1];
 
 /*
  * Constant-time goals:
  * - Secret scalars are processed with fixed-trip loops only.
- * - Conditional swaps/selects are implemented with bit-masks, not branches.
- * - The Montgomery ladder must not branch on secret scalar bits.
- * - Validation on peer public keys happens before ladder execution and only on
- *   public inputs.
+ * - Conditional swaps/selects are implemented with bit masks, not branches.
+ * - The Montgomery ladder does not branch on secret scalar bits.
+ * - Peer validation happens only in the checked wrapper and only on public
+ *   input encodings.
  */
 
 typedef int64_t gf[16];
 
 static const gf MDH_121665 = { 0xdb41, 1 };
+
+#ifdef MDH_TESTING
 static const uint8_t MDH_X25519_SMALL_ORDER[12][32] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -65,8 +83,6 @@ static const uint8_t MDH_X25519_SMALL_ORDER[12][32] = {
       0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
       0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
 };
-
-#ifdef MDH_TESTING
 static unsigned char mdh_test_wipe_ok[MDH_TEST_WIPE_COUNT];
 static size_t mdh_test_wipe_len[MDH_TEST_WIPE_COUNT];
 
@@ -81,9 +97,18 @@ int mdh_test_wipe_was_zeroed(mdh_test_wipe_slot_t slot, size_t expected_len) {
     }
     return mdh_test_wipe_ok[slot] != 0 && mdh_test_wipe_len[slot] == expected_len;
 }
-#endif
 
-#ifndef MDH_TESTING
+size_t mdh_test_weak_peer_case_count(void) {
+    return sizeof(MDH_X25519_SMALL_ORDER) / sizeof(MDH_X25519_SMALL_ORDER[0]);
+}
+
+const uint8_t *mdh_test_weak_peer_case(size_t index) {
+    if (index >= mdh_test_weak_peer_case_count()) {
+        return NULL;
+    }
+    return MDH_X25519_SMALL_ORDER[index];
+}
+#else
 enum {
     MDH_TEST_WIPE_SCALAR = 0,
     MDH_TEST_WIPE_X1 = 0,
@@ -101,9 +126,30 @@ static void mdh_secure_zero(void *ptr, size_t len) {
     volatile unsigned char *p = (volatile unsigned char *)ptr;
     size_t i;
 
+    if (ptr == NULL || len == 0) {
+        return;
+    }
     for (i = 0; i < len; ++i) {
         p[i] = 0U;
     }
+}
+
+void mdh_secure_clear(void *ptr, size_t len) {
+    mdh_secure_zero(ptr, len);
+}
+
+void mdh_keypair_clear(mdh_keypair_t *keypair) {
+    if (keypair == NULL) {
+        return;
+    }
+    mdh_secure_zero(keypair, sizeof(*keypair));
+}
+
+void mdh_secret_clear(uint8_t secret[32]) {
+    if (secret == NULL) {
+        return;
+    }
+    mdh_secure_zero(secret, 32U);
 }
 
 static void mdh_secure_zero_gf(gf value) {
@@ -209,15 +255,20 @@ static void gf_sq(gf out, const gf in) {
 
 static void gf_select(gf p, gf q, uint32_t bit) {
     int i;
-    int64_t mask = ~(int64_t)(bit - 1U);
+    int64_t mask = -(int64_t)(bit & 1U);
 
-    /* Branchless conditional swap used by the Montgomery ladder. */
     for (i = 0; i < 16; ++i) {
         int64_t t = mask & (p[i] ^ q[i]);
         p[i] ^= t;
         q[i] ^= t;
     }
 }
+
+#ifdef MDH_TESTING
+void mdh_test_gf_select(int64_t p[16], int64_t q[16], uint32_t bit) {
+    gf_select(p, q, bit);
+}
+#endif
 
 static void gf_pack(uint8_t out[32], const gf in) {
     gf m;
@@ -294,30 +345,11 @@ static int mdh_is_all_zero(const uint8_t *buf, size_t len) {
     return acc == 0;
 }
 
-static int mdh_has_small_order_point(const uint8_t point[32]) {
-    uint8_t diff[12] = { 0 };
-    uint32_t match = 0;
-    size_t i;
-    size_t j;
-
-    for (i = 0; i < 12U; ++i) {
-        for (j = 0; j < 32U; ++j) {
-            diff[i] |= (uint8_t)(point[j] ^ MDH_X25519_SMALL_ORDER[i][j]);
-        }
-    }
-
-    for (i = 0; i < 12U; ++i) {
-        match |= (uint32_t)((uint32_t)(diff[i] - 1U) >> 8);
-    }
-
-    mdh_secure_zero(diff, sizeof(diff));
-    return (int)(match & 1U);
-}
-
-static void mdh_x25519(uint8_t out[32],
-                       const uint8_t scalar_in[32],
-                       const uint8_t point[32]) {
+static mdh_err_t mdh_x25519_impl(uint8_t out[32],
+                                 const uint8_t scalar_in[32],
+                                 const uint8_t point_in[32]) {
     uint8_t scalar[32];
+    uint8_t point[32];
     uint8_t shared_secret[32];
     gf x1;
     gf a;
@@ -329,7 +361,9 @@ static void mdh_x25519(uint8_t out[32],
     int i;
 
     memcpy(scalar, scalar_in, sizeof(scalar));
+    memcpy(point, point_in, sizeof(point));
     mdh_clamp_scalar(scalar);
+    point[31] &= 0x7fU;
     gf_unpack(x1, point);
 
     gf_1(a);
@@ -374,6 +408,7 @@ static void mdh_x25519(uint8_t out[32],
 
     mdh_secure_zero_tagged(shared_secret, sizeof(shared_secret), MDH_TEST_WIPE_SHARED_SECRET);
     mdh_secure_zero_tagged(scalar, sizeof(scalar), MDH_TEST_WIPE_SCALAR);
+    mdh_secure_zero(point, sizeof(point));
     mdh_secure_zero_tagged(x1, sizeof(x1), MDH_TEST_WIPE_X1);
     mdh_secure_zero_tagged(a, sizeof(a), MDH_TEST_WIPE_A);
     mdh_secure_zero_tagged(b, sizeof(b), MDH_TEST_WIPE_B);
@@ -381,65 +416,103 @@ static void mdh_x25519(uint8_t out[32],
     mdh_secure_zero_tagged(d, sizeof(d), MDH_TEST_WIPE_D);
     mdh_secure_zero_tagged(e, sizeof(e), MDH_TEST_WIPE_E);
     mdh_secure_zero_tagged(f, sizeof(f), MDH_TEST_WIPE_F);
+    return MDH_OK;
 }
 
-mdh_err_t mdh_generate_keypair(mdh_keypair_t *kp, mdh_rng_fn rng) {
-    static const uint8_t basepoint[32] = { 9 };
-    mdh_err_t rng_err;
+mdh_err_t mdh_x25519(uint8_t out[32],
+                     const uint8_t scalar[32],
+                     const uint8_t u_coordinate[32]) {
+    mdh_err_t err;
 
-    if (kp == NULL || rng == NULL) {
-        return MDH_ERR_RNG;
+    if (out == NULL || scalar == NULL || u_coordinate == NULL) {
+        if (out != NULL) {
+            mdh_secret_clear(out);
+        }
+        return MDH_ERR_INVALID_ARGUMENT;
     }
 
-    rng_err = rng(kp->privkey, sizeof(kp->privkey));
-    if (rng_err != MDH_OK) {
-        mdh_secure_zero(kp->privkey, sizeof(kp->privkey));
-        mdh_secure_zero(kp->pubkey, sizeof(kp->pubkey));
-        return MDH_ERR_RNG;
-    }
-    if (mdh_is_all_zero(kp->privkey, sizeof(kp->privkey))) {
-        mdh_secure_zero(kp->privkey, sizeof(kp->privkey));
-        mdh_secure_zero(kp->pubkey, sizeof(kp->pubkey));
-        return MDH_ERR_RNG;
-    }
-
-    mdh_clamp_scalar(kp->privkey);
-    mdh_x25519(kp->pubkey, kp->privkey, basepoint);
-    if (mdh_is_all_zero(kp->pubkey, sizeof(kp->pubkey))) {
-        mdh_secure_zero(kp->privkey, sizeof(kp->privkey));
-        mdh_secure_zero(kp->pubkey, sizeof(kp->pubkey));
-        return MDH_ERR_RNG;
+    err = mdh_x25519_impl(out, scalar, u_coordinate);
+    if (err != MDH_OK) {
+        mdh_secret_clear(out);
+        return err;
     }
 
     return MDH_OK;
 }
 
-mdh_err_t mdh_shared_secret(const uint8_t privkey[32],
-                            const uint8_t remote_pub[32],
+mdh_err_t mdh_public_key(uint8_t out_public[32], const uint8_t private_key[32]) {
+    static const uint8_t basepoint[32] = { 9 };
+
+    if (out_public == NULL || private_key == NULL) {
+        if (out_public != NULL) {
+            mdh_secret_clear(out_public);
+        }
+        return MDH_ERR_INVALID_ARGUMENT;
+    }
+
+    return mdh_x25519(out_public, private_key, basepoint);
+}
+
+mdh_err_t mdh_shared_secret_checked(uint8_t out_secret[32],
+                                    const uint8_t private_key[32],
+                                    const uint8_t peer_public_key[32]) {
+    uint8_t shared[32];
+    mdh_err_t err;
+
+    if (out_secret == NULL || private_key == NULL || peer_public_key == NULL) {
+        if (out_secret != NULL) {
+            mdh_secret_clear(out_secret);
+        }
+        return MDH_ERR_INVALID_ARGUMENT;
+    }
+
+    err = mdh_x25519_impl(shared, private_key, peer_public_key);
+    if (err != MDH_OK) {
+        mdh_secret_clear(out_secret);
+        mdh_secret_clear(shared);
+        return err;
+    }
+
+    if (mdh_is_all_zero(shared, sizeof(shared))) {
+        mdh_secret_clear(out_secret);
+        mdh_secret_clear(shared);
+        return MDH_ERR_WEAK_PEER_KEY;
+    }
+
+    memcpy(out_secret, shared, sizeof(shared));
+    mdh_secret_clear(shared);
+    return MDH_OK;
+}
+
+mdh_err_t mdh_shared_secret(const uint8_t private_key[32],
+                            const uint8_t peer_public_key[32],
                             uint8_t out_secret[32]) {
-    uint8_t normalized_remote[32];
+    return mdh_shared_secret_checked(out_secret, private_key, peer_public_key);
+}
 
-    if (privkey == NULL || remote_pub == NULL || out_secret == NULL) {
-        return MDH_ERR_INVALID_KEY;
+mdh_err_t mdh_generate_keypair(mdh_keypair_t *keypair,
+                               mdh_rng_fn rng,
+                               void *rng_user) {
+    static const uint8_t basepoint[32] = { 9 };
+    mdh_err_t rng_err;
+
+    if (keypair != NULL) {
+        mdh_keypair_clear(keypair);
+    }
+    if (keypair == NULL || rng == NULL) {
+        return MDH_ERR_INVALID_ARGUMENT;
     }
 
-    memcpy(normalized_remote, remote_pub, sizeof(normalized_remote));
-    normalized_remote[31] &= 0x7fU;
-
-    if (mdh_is_all_zero(privkey, 32U) || mdh_is_all_zero(normalized_remote, 32U)) {
-        mdh_secure_zero(normalized_remote, sizeof(normalized_remote));
-        return MDH_ERR_INVALID_KEY;
+    rng_err = rng(rng_user, keypair->privkey, sizeof(keypair->privkey));
+    if (rng_err != MDH_OK) {
+        mdh_keypair_clear(keypair);
+        return MDH_ERR_RNG;
     }
 
-    if (mdh_has_small_order_point(normalized_remote)) {
-        mdh_secure_zero(normalized_remote, sizeof(normalized_remote));
-        return MDH_ERR_WEAK_KEY;
-    }
-
-    mdh_x25519(out_secret, privkey, normalized_remote);
-    mdh_secure_zero(normalized_remote, sizeof(normalized_remote));
-    if (mdh_is_all_zero(out_secret, 32U)) {
-        return MDH_ERR_WEAK_KEY;
+    mdh_clamp_scalar(keypair->privkey);
+    if (mdh_x25519_impl(keypair->pubkey, keypair->privkey, basepoint) != MDH_OK) {
+        mdh_keypair_clear(keypair);
+        return MDH_ERR_INTERNAL;
     }
 
     return MDH_OK;

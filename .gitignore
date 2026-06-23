@@ -8,3 +8,5 @@ build/
 build/
 build_clang/
 build_ninja/
+/build-msvc-fresh
+/prompts

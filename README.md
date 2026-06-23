@@ -1,47 +1,53 @@
 # microdh
 
-[![CI](https://github.com/Vanderhell/microdh/actions/workflows/ci.yml/badge.svg)](https://github.com/Vanderhell/microdh/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![C99](https://img.shields.io/badge/C-C99-blue.svg)](https://en.wikipedia.org/wiki/C99)
+`microdh` is a small portable C99 library for X25519/Curve25519 only.
 
-Minimal X25519 (Curve25519) key exchange for embedded systems in pure C99.
-Zero dependencies. Zero allocations. Designed to pair with
-[microcrypt](https://github.com/Vanderhell/microcrypt).
+## What it does
 
-## Features
+- Raw RFC 7748 X25519 primitive: `mdh_x25519()`
+- Checked shared-secret API: `mdh_shared_secret_checked()`
+- Public-key derivation: `mdh_public_key()`
+- Caller-context key generation: `mdh_generate_keypair()`
+- Explicit secure-clear helpers: `mdh_secure_clear()`, `mdh_keypair_clear()`, `mdh_secret_clear()`
 
-- X25519 key exchange (RFC 7748)
-- Keypair generation with pluggable RNG
-- Shared secret computation
-- Weak key detection
-- RFC 7748 test vectors
+## What it does not do
 
-## Security notice
+- It is not authenticated key exchange.
+- It does not prevent man-in-the-middle attacks.
+- Raw X25519 output is not an application session key by itself.
+- Applications still need a KDF and protocol context binding.
+- Identity authentication is a separate layer.
 
-This is a portable reference implementation. It has not been audited for
-side-channel resistance. For high-security production systems, use audited
-libraries or hardware accelerators.
+## Security notes
 
-## Usage
+- RNG input must be a CSPRNG.
+- Checked shared-secret derivation rejects an all-zero shared result.
+- Public secret-writing APIs clear output on failure when an output buffer is provided.
+- Zero external dependencies means no third-party runtime dependencies; the C standard library is still used.
+- Side-channel resistance is not formally verified.
+- Hardware verification, certification, and independent audit are `NOT VERIFIED`.
 
-```c
-#include "mdh.h"
+## Verified platform
 
-mdh_keypair_t kp;
-mdh_generate_keypair(&kp, my_rng);
+- Verified in this task: Windows, Visual Studio 17 2022, MSVC 19.42.34444.0, Debug generator.
+- Other compilers, sanitizers, MCUs, and hardware targets are `NOT VERIFIED`.
 
-uint8_t shared[32];
-mdh_shared_secret(kp.privkey, remote_pubkey, shared);
+## Build
+
+```powershell
+cmake -S . -B build -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON
+cmake --build build --parallel
+ctest --test-dir build -C Debug --output-on-failure
 ```
 
-## Build and test
+Install the package and run the consumer smoke test from the build tree:
 
-```bash
-cmake -B build -DMDH_BUILD_TESTS=ON
-cmake --build build
-cd build && ctest --output-on-failure
+```powershell
+cmake --install build --prefix build/_install
+cmake -S tests/consumer -B build/consumer -DCMAKE_PREFIX_PATH=build/_install
+cmake --build build/consumer --config Debug
 ```
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+See `LICENSE`.

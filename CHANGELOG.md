@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.0.0] - 2026-06-23
+
+### Changed
+- Split the raw RFC 7748 X25519 primitive from the checked shared-secret wrapper
+- Changed key-generation RNG callbacks to accept caller context and request exactly 32 bytes
+- Added explicit secure-clear helpers for keys, secrets, and arbitrary buffers
+- Added installable package targets and consumer smoke coverage
+
+### Fixed
+- Conditional-swap mask construction now normalizes the selector bit to a full-width mask
+- Public secret-writing APIs now clear outputs on failure
+- Checked shared-secret derivation now rejects all-zero results consistently
+- Test harness and internal instrumentation now avoid hidden mutable RNG state
+
 ## [1.0.1] - 2026-04-02
 
 ### Fixed

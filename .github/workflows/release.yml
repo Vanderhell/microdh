@@ -12,22 +12,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: sudo apt-get install -y cmake gcc
-
-      - name: Build & Test
+      - name: Configure
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DMDH_BUILD_TESTS=ON
-          cmake --build build --parallel
-          cd build && ctest --output-on-failure
+          cmake -S . -B build \
+            -DMDH_BUILD_TESTS=ON \
+            -DMDH_BUILD_INTERNAL_TESTS=ON \
+            -DMDH_BUILD_DIFFERENTIAL_TESTS=OFF \
+            -DMDH_BUILD_SLOW_TESTS=OFF \
+            -DMDH_STRICT_WARNINGS=ON \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Install
+        run: cmake --install build --prefix release-root
 
       - name: Create archive
         run: |
-          mkdir -p release/microdh
-          cp -r include src docs LICENSE README.md CMakeLists.txt release/microdh/
-          cd release
-          tar -czf microdh-${{ github.ref_name }}.tar.gz microdh/
-          zip -r microdh-${{ github.ref_name }}.zip microdh/
+          mkdir -p release
+          tar -C release-root -czf release/microdh-${{ github.ref_name }}.tar.gz .
+          zip -r release/microdh-${{ github.ref_name }}.zip release-root
 
       - name: GitHub Release
         uses: softprops/action-gh-release@v1
