@@ -211,9 +211,10 @@ static void gf_sub(gf out, const gf a, const gf b) {
 
 static void gf_carry(gf out) {
     int i;
-    int64_t carry;
 
     for (i = 0; i < 16; ++i) {
+        int64_t carry;
+
         out[i] += (int64_t)1 << 16;
         carry = out[i] >> 16;
         if (i < 15) {
@@ -422,8 +423,6 @@ static mdh_err_t mdh_x25519_impl(uint8_t out[32],
 mdh_err_t mdh_x25519(uint8_t out[32],
                      const uint8_t scalar[32],
                      const uint8_t u_coordinate[32]) {
-    mdh_err_t err;
-
     if (out == NULL || scalar == NULL || u_coordinate == NULL) {
         if (out != NULL) {
             mdh_secret_clear(out);
@@ -431,12 +430,7 @@ mdh_err_t mdh_x25519(uint8_t out[32],
         return MDH_ERR_INVALID_ARGUMENT;
     }
 
-    err = mdh_x25519_impl(out, scalar, u_coordinate);
-    if (err != MDH_OK) {
-        mdh_secret_clear(out);
-        return err;
-    }
-
+    (void)mdh_x25519_impl(out, scalar, u_coordinate);
     return MDH_OK;
 }
 
@@ -457,7 +451,6 @@ mdh_err_t mdh_shared_secret_checked(uint8_t out_secret[32],
                                     const uint8_t private_key[32],
                                     const uint8_t peer_public_key[32]) {
     uint8_t shared[32];
-    mdh_err_t err;
 
     if (out_secret == NULL || private_key == NULL || peer_public_key == NULL) {
         if (out_secret != NULL) {
@@ -466,12 +459,7 @@ mdh_err_t mdh_shared_secret_checked(uint8_t out_secret[32],
         return MDH_ERR_INVALID_ARGUMENT;
     }
 
-    err = mdh_x25519_impl(shared, private_key, peer_public_key);
-    if (err != MDH_OK) {
-        mdh_secret_clear(out_secret);
-        mdh_secret_clear(shared);
-        return err;
-    }
+    (void)mdh_x25519_impl(shared, private_key, peer_public_key);
 
     if (mdh_is_all_zero(shared, sizeof(shared))) {
         mdh_secret_clear(out_secret);
@@ -494,7 +482,6 @@ mdh_err_t mdh_generate_keypair(mdh_keypair_t *keypair,
                                mdh_rng_fn rng,
                                void *rng_user) {
     static const uint8_t basepoint[32] = { 9 };
-    mdh_err_t rng_err;
 
     if (keypair != NULL) {
         mdh_keypair_clear(keypair);
@@ -503,17 +490,13 @@ mdh_err_t mdh_generate_keypair(mdh_keypair_t *keypair,
         return MDH_ERR_INVALID_ARGUMENT;
     }
 
-    rng_err = rng(rng_user, keypair->privkey, sizeof(keypair->privkey));
-    if (rng_err != MDH_OK) {
+    if (rng(rng_user, keypair->privkey, sizeof(keypair->privkey)) != MDH_OK) {
         mdh_keypair_clear(keypair);
         return MDH_ERR_RNG;
     }
 
     mdh_clamp_scalar(keypair->privkey);
-    if (mdh_x25519_impl(keypair->pubkey, keypair->privkey, basepoint) != MDH_OK) {
-        mdh_keypair_clear(keypair);
-        return MDH_ERR_INTERNAL;
-    }
+    (void)mdh_x25519_impl(keypair->pubkey, keypair->privkey, basepoint);
 
     return MDH_OK;
 }

@@ -62,8 +62,11 @@ static void test_02_weak_peer_table(void) {
         for (j = i + 1; j < count; ++j) {
             const uint8_t *other = mdh_test_weak_peer_case(j);
 
-            MTEST_ASSERT(other != NULL);
-            MTEST_ASSERT(memcmp(entry, other, 32U) != 0);
+            if (other == NULL) {
+                MTEST_ASSERT(other != NULL);
+            } else {
+                MTEST_ASSERT(memcmp(entry, other, 32U) != 0);
+            }
         }
     }
     MTEST_ASSERT_MEMEQ(mdh_test_weak_peer_case(0), zero_case, 32U);

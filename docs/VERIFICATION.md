@@ -70,6 +70,7 @@ This file contains only commands and results executed during this task.
 - `C:\msys64\ucrt64\bin\clang-tidy.exe`
 - `C:\msys64\ucrt64\bin\openssl.exe`
 - `C:\msys64\ucrt64\bin\arm-none-eabi-gcc.exe`
+- `C:\msys64\ucrt64\lib\clang\22\lib\x86_64-w64-windows-gnu\` did not contain ASan/UBSan runtime libraries
 
 ## MSYS2 GCC and Clang verification
 
@@ -112,3 +113,25 @@ This file contains only commands and results executed during this task.
 - `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-final-fast -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug` -> configured with GNU 16.1.0
 - `C:\msys64\ucrt64\bin\cmake.exe --build build-final-fast --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
 - `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-final-fast --output-on-failure` -> `4/4` tests passed in `66.35 sec` total time; oracle label time `51.90 sec`
+
+## Current cleanup
+
+- `C:\msys64\ucrt64\bin\cppcheck.exe --inline-suppr --std=c11 --language=c --enable=warning,style,performance,portability --error-exitcode=1 -Iinclude -Itests src tests include\mdh.h` -> exited `0`
+- `C:\msys64\ucrt64\bin\clang-tidy.exe -p build-clang-tidy-msys2 C:\Users\vande\Desktop\github\microdh\src\mdh.c --config-file=C:\tmp\clang-tidy-msys2.yaml` -> exited `0` with warnings only; no configuration-read errors
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-sanitize-gcc-msys2 -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=OFF -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS=\"-fsanitize=address,undefined -fno-omit-frame-pointer\"` -> failed because `ld.exe` could not find `-lasan` and `-lubsan`
+- `C:\msys64\ucrt64\bin\pacman.exe -Ss compiler-rt` -> reported `ucrt64/mingw-w64-ucrt-x86_64-compiler-rt 22.1.7-1` as the matching package
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-slow-gcc-msys2 -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DMDH_BUILD_TESTS=OFF -DMDH_BUILD_INTERNAL_TESTS=OFF -DMDH_BUILD_DIFFERENTIAL_TESTS=OFF -DMDH_BUILD_SLOW_TESTS=ON -DCMAKE_BUILD_TYPE=Release` -> configured with GNU 16.1.0
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-slow-gcc-msys2 --config Release --target mdh_slow_tests --parallel` -> built `mdh_slow_tests.exe`
+- `C:\Users\vande\Desktop\github\microdh\build-slow-gcc-msys2\mdh_slow_tests.exe` -> timed out after `600000 ms`
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-fast-gcc-debug-current -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug` -> configured with GNU 16.1.0
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-fast-gcc-debug-current --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
+- `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-fast-gcc-debug-current --output-on-failure` -> `4/4` tests passed in `64.71 sec` total time; oracle label time `50.47 sec`
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-fast-gcc-release-current -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Release` -> configured with GNU 16.1.0
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-fast-gcc-release-current --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
+- `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-fast-gcc-release-current --output-on-failure` -> `4/4` tests passed in `14.85 sec` total time; oracle label time `9.42 sec`
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-fast-clang-debug-current -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/clang.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug` -> configured with Clang 22.1.7
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-fast-clang-debug-current --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
+- `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-fast-clang-debug-current --output-on-failure` -> `4/4` tests passed in `61.37 sec` total time; oracle label time `47.97 sec`
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-fast-clang-release-current -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/clang.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Release` -> configured with Clang 22.1.7
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-fast-clang-release-current --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
+- `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-fast-clang-release-current --output-on-failure` -> `4/4` tests passed in `16.92 sec` total time; oracle label time `10.98 sec`

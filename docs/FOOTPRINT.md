@@ -10,6 +10,10 @@
 - `C:\msys64\ucrt64\bin\cmake.exe --build build-gcc-footprint-msys2-v1 --target microdh --parallel` -> built `libmicrodh.a`
 - `Get-ChildItem -Recurse build-gcc-footprint-msys2-v1 -Filter *.su | ForEach-Object { '{0} | {1}' -f $_.FullName, $_.Length }` -> `C:\Users\vande\Desktop\github\microdh\build-gcc-footprint-msys2-v1\CMakeFiles\microdh.dir\src\mdh.c.su | 827`
 - `Get-Item build-gcc-footprint-msys2-v1\libmicrodh.a | Select-Object FullName,Length` -> length `16422`
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-gcc-footprint-msys2-v2 -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=OFF -DMDH_BUILD_INTERNAL_TESTS=OFF -DMDH_BUILD_DIFFERENTIAL_TESTS=OFF -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=\"-fstack-usage\"` -> configured with GNU 16.1.0
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-gcc-footprint-msys2-v2 --target microdh --parallel` -> built `libmicrodh.a`
+- `Get-ChildItem -Recurse build-gcc-footprint-msys2-v2 -Filter *.su | ForEach-Object { '{0} | {1}' -f $_.FullName, $_.Length }` -> `C:\Users\vande\Desktop\github\microdh\build-gcc-footprint-msys2-v2\CMakeFiles\microdh.dir\src\mdh.c.su | 827`
+- `Get-Item build-gcc-footprint-msys2-v2\libmicrodh.a | Select-Object FullName,Length` -> length `16422`
 
 ## Not verified
 

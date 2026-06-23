@@ -25,7 +25,9 @@ typedef enum {
 #define MDH_ERR_WEAK_KEY MDH_ERR_WEAK_PEER_KEY
 
 typedef struct {
+    // cppcheck-suppress unusedStructMember
     uint8_t privkey[32];
+    // cppcheck-suppress unusedStructMember
     uint8_t pubkey[32];
 } mdh_keypair_t;
 

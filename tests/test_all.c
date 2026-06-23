@@ -23,9 +23,6 @@ static int hex_nibble(int c) {
     if (c >= 'a' && c <= 'f') {
         return c - 'a' + 10;
     }
-    if (c >= 'A' && c <= 'F') {
-        return -2;
-    }
     return -1;
 }
 
@@ -47,9 +44,6 @@ static int hex_to_bytes(uint8_t *out, size_t out_len, const char *hex) {
         int lo = hex_nibble((unsigned char)hex[i * 2U + 1U]);
 
         if (hi < 0 || lo < 0) {
-            return 0;
-        }
-        if (hi == -2 || lo == -2) {
             return 0;
         }
         out[i] = (uint8_t)((hi << 4) | lo);
@@ -111,8 +105,10 @@ static mdh_err_t rng_fail_before_write(void *user, uint8_t *buffer, size_t lengt
     return MDH_ERR_RNG;
 }
 
+// cppcheck-suppress constParameterCallback
+// cppcheck-suppress constParameterCallback
 static mdh_err_t rng_fail_after_partial(void *user, uint8_t *buffer, size_t length) {
-    rng_fail_after_partial_t *state = (rng_fail_after_partial_t *)user;
+    const rng_fail_after_partial_t *state = (const rng_fail_after_partial_t *)user;
     size_t i;
     size_t half = length / 2U;
 
@@ -208,7 +204,7 @@ static void test_03_rfc_6_1_vectors(void) {
     uint8_t bob_pub[32];
     uint8_t shared_ab[32];
     uint8_t shared_ba[32];
-    uint8_t basepoint[32] = { 9 };
+    static const uint8_t basepoint[32] = { 9 };
 
     MTEST_ASSERT_EQ_INT(mdh_x25519(alice_pub, alice_scalar, basepoint), MDH_OK);
     MTEST_ASSERT_EQ_INT(mdh_x25519(bob_pub, bob_scalar, basepoint), MDH_OK);
@@ -226,7 +222,7 @@ static void test_04_rfc_iteration_vectors(void) {
     uint8_t k[32];
     uint8_t u[32];
     uint8_t next[32];
-    uint8_t basepoint[32] = { 9 };
+    static const uint8_t basepoint[32] = { 9 };
     static const uint8_t one_iter_expected[32] = {
         0x42, 0x2c, 0x8e, 0x7a, 0x62, 0x27, 0xd7, 0xbc,
         0xa1, 0x35, 0x0b, 0x3e, 0x2b, 0xb7, 0x27, 0x9f,
