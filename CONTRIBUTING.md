@@ -3,8 +3,10 @@
 ## Reporting issues
 
 Use GitHub Issues. Include:
-- Platform (ESP32 / Linux / Windows)
+- Version or commit
+- Platform
 - Compiler and version
+- Build options
 - Minimal reproducer
 
 ## Pull requests

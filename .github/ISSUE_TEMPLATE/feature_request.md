@@ -6,10 +6,10 @@ labels: enhancement
 assignees: ""
 ---
 
-**What would you like?**
-[Feature description]
+**What problem are you trying to solve?**
 
-**Why is it useful?**
-[Reason]
+**Proposed change:**
 
-**Platform:** ESP32 / Linux / both
+**Intended platform:**
+
+microdh is X25519 only. It does not implement protocols, KDFs, or authentication.

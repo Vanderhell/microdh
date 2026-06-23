@@ -14,39 +14,45 @@
 
 - It is not authenticated key exchange.
 - It does not prevent man-in-the-middle attacks.
-- Raw X25519 output is not an application session key by itself.
-- Applications still need a KDF and protocol context binding.
-- Identity authentication is a separate layer.
+- Raw X25519 output is not a session key by itself.
+- Applications still need a KDF, transcript or context binding, and separate identity authentication.
+- This library does not implement full protocols.
 
-## Security notes
+## Security and scope
 
 - RNG input must be a CSPRNG.
 - Checked shared-secret derivation rejects an all-zero shared result.
 - Public secret-writing APIs clear output on failure when an output buffer is provided.
-- Zero external dependencies means no third-party runtime dependencies; the C standard library is still used.
 - Side-channel resistance is not formally verified.
-- Hardware verification, certification, and independent audit are `NOT VERIFIED`.
+- No independent audit, formal proof, hardware execution, or certification is claimed here.
 
-## Verified platform
+## Verified platforms and evidence
 
-- Verified in this task: Windows, Visual Studio 17 2022, MSVC 19.42.34444.0, Debug generator.
-- Other compilers, sanitizers, MCUs, and hardware targets are `NOT VERIFIED`.
+Local verification evidence is recorded in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
+- Windows / Visual Studio 17 2022 / MSVC 19.42.34444.0 / Debug fast verification
+- MSYS2 UCRT64 GCC 16.1.0 / Debug and Release fast verification
+- MSYS2 UCRT64 Clang 22.1.7 / Debug and Release fast verification
+- MSYS2 CLANG64 Clang 22.1.7 / ASan+UBSan sanitizer verification
+- ARM Cortex-M0 and Cortex-M4 compile/link smoke
+- RFC 7748 1,000,000-iteration slow test completion
+
+## Further reading
+
+- [API reference](docs/API.md)
+- [RNG guidance](docs/RNG.md)
+- [Protocol integration](docs/PROTOCOL_INTEGRATION.md)
+- [Constant-time notes](docs/CONSTANT_TIME.md)
+- [Footprint data](docs/FOOTPRINT.md)
+- [Verification evidence](docs/VERIFICATION.md)
+- [Cookbook](docs/COOKBOOK.md)
+- [Security policy](SECURITY.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Support](SUPPORT.md)
 
 ## Build
 
-```powershell
-cmake -S . -B build -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON
-cmake --build build --parallel
-ctest --test-dir build -C Debug --output-on-failure
-```
-
-Install the package and run the consumer smoke test from the build tree:
-
-```powershell
-cmake --install build --prefix build/_install
-cmake -S tests/consumer -B build/consumer -DCMAKE_PREFIX_PATH=build/_install
-cmake --build build/consumer --config Debug
-```
+See [docs/VERIFICATION.md](docs/VERIFICATION.md) for the exact local commands used for verification.
 
 ## License
 

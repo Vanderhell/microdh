@@ -6,15 +6,16 @@ labels: bug
 assignees: ""
 ---
 
-**Platform:** ESP32 / Linux / Windows
-**Compiler:** gcc 12.2 / clang 15 / arm-none-eabi-gcc
-**Version:** v1.0.0
+**Version or commit:**
 
-**Description:**
-[Problem description]
+**Platform:**
 
-**Reproducer:**
-[Minimal code]
+**Compiler and version:**
 
-**Expected:** [What should happen]
-**Actual:** [What happened]
+**Build options:**
+
+**Minimal reproducer:**
+
+**Expected:**
+
+**Actual:**
