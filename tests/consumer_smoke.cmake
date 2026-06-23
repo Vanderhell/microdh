@@ -13,6 +13,15 @@ endif()
 if(NOT DEFINED MDH_MAKE_PROGRAM)
     message(FATAL_ERROR "MDH_MAKE_PROGRAM is required")
 endif()
+if(NOT DEFINED MDH_C_FLAGS)
+    set(MDH_C_FLAGS "")
+endif()
+if(NOT DEFINED MDH_EXE_LINKER_FLAGS)
+    set(MDH_EXE_LINKER_FLAGS "")
+endif()
+if(NOT DEFINED MDH_SANITIZER_RUNTIME_DIR)
+    set(MDH_SANITIZER_RUNTIME_DIR "")
+endif()
 if(NOT DEFINED MDH_BUILD_CONFIG)
     message(FATAL_ERROR "MDH_BUILD_CONFIG is required")
 endif()
@@ -38,6 +47,8 @@ execute_process(
             "-DCMAKE_PREFIX_PATH=${MDH_INSTALL_DIR}"
             "-DCMAKE_C_COMPILER=${MDH_C_COMPILER}"
             "-DCMAKE_MAKE_PROGRAM=${MDH_MAKE_PROGRAM}"
+            "-DCMAKE_C_FLAGS=${MDH_C_FLAGS}"
+            "-DCMAKE_EXE_LINKER_FLAGS=${MDH_EXE_LINKER_FLAGS}"
     RESULT_VARIABLE configure_result
 )
 if(NOT configure_result EQUAL 0)
@@ -65,7 +76,9 @@ else()
 endif()
 
 execute_process(
-    COMMAND "${consumer_exe}"
+    COMMAND "${CMAKE_COMMAND}" -E env
+            "PATH=${MDH_SANITIZER_RUNTIME_DIR}\;$ENV{PATH}"
+            "${consumer_exe}"
     RESULT_VARIABLE run_result
 )
 if(NOT run_result EQUAL 0)

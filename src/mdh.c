@@ -222,7 +222,7 @@ static void gf_carry(gf out) {
         } else {
             out[0] += (carry - 1) * 38;
         }
-        out[i] -= carry << 16;
+        out[i] -= carry * ((int64_t)1 << 16);
     }
 }
 

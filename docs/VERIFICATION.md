@@ -91,6 +91,12 @@ This file contains only commands and results executed during this task.
 
 - `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-sanitize-msys2-v4 -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/clang.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=OFF -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS=\"-fsanitize=address,undefined -fno-omit-frame-pointer\"` -> failed in compiler detection because `C:/msys64/ucrt64/lib/clang/22/lib/x86_64-w64-windows-gnu/libclang_rt.asan_dynamic.dll.a` and `libclang_rt.asan_dynamic_runtime_thunk.a` were missing
 
+## CLANG64 sanitizer verification
+
+- `C:\msys64\clang64\bin\cmake.exe -S . -B build-sanitize-clang64 -G Ninja -DCMAKE_C_COMPILER=C:/msys64/clang64/bin/clang.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/clang64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DMDH_STRICT_WARNINGS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS=\"-fsanitize=address,undefined -fno-omit-frame-pointer\"` -> configured with Clang 22.1.7
+- `C:\msys64\clang64\bin\cmake.exe --build build-sanitize-clang64 --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
+- `C:\msys64\clang64\bin\ctest.exe --test-dir build-sanitize-clang64 --output-on-failure` -> `4/4` tests passed in `244.77 sec` real time; `mdh_tests` `41.75 sec`, `mdh_internal_tests` `0.07 sec`, `mdh_oracle_tests` `198.71 sec`, `mdh_consumer_smoke` `4.23 sec`
+
 ## Static analysis
 
 - `C:\msys64\ucrt64\bin\cppcheck.exe --std=c99 --language=c --enable=warning,style,performance,portability --error-exitcode=1 -Iinclude -Itests src tests include\mdh.h` -> exited `1` with cppcheck diagnostics across `src`, `tests`, and `include`
@@ -113,6 +119,12 @@ This file contains only commands and results executed during this task.
 - `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-final-fast -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug` -> configured with GNU 16.1.0
 - `C:\msys64\ucrt64\bin\cmake.exe --build build-final-fast --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
 - `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-final-fast --output-on-failure` -> `4/4` tests passed in `66.35 sec` total time; oracle label time `51.90 sec`
+
+## Fast rerun after sanitizer fix
+
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-fast-gcc-debug-current -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug` -> configured with GNU 16.1.0
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-fast-gcc-debug-current --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
+- `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-fast-gcc-debug-current --output-on-failure` -> `4/4` tests passed in `65.97 sec` total time; oracle label time `51.50 sec`
 
 ## Current cleanup
 

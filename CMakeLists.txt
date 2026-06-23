@@ -67,6 +67,14 @@ endfunction()
 mdh_apply_warnings(microdh)
 mdh_apply_warnings(microdh_testing_obj)
 
+set(MDH_SANITIZER_RUNTIME_DIR "")
+string(FIND "${CMAKE_C_FLAGS}" "-fsanitize=" MDH_SANITIZER_FLAG_INDEX)
+if(MDH_SANITIZER_FLAG_INDEX GREATER -1)
+    get_filename_component(MDH_SANITIZER_RUNTIME_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+    set(MDH_SANITIZER_TEST_PATH "${MDH_SANITIZER_RUNTIME_DIR};$ENV{PATH}")
+    string(REPLACE ";" "\\;" MDH_SANITIZER_TEST_PATH_ESCAPED "${MDH_SANITIZER_TEST_PATH}")
+endif()
+
 if(MDH_BUILD_TESTS)
     add_executable(mdh_tests tests/test_all.c)
     target_link_libraries(mdh_tests PRIVATE microdh)
@@ -117,7 +125,7 @@ if(MDH_BUILD_FUZZERS)
 endif()
 
 if(MDH_BUILD_TESTS)
-    add_test(
+        add_test(
         NAME mdh_consumer_smoke
         COMMAND ${CMAKE_COMMAND}
             -DMDH_BUILD_DIR=${CMAKE_BINARY_DIR}
@@ -126,9 +134,21 @@ if(MDH_BUILD_TESTS)
             -DMDH_BUILD_CONFIG=$<CONFIG>
             -DMDH_C_COMPILER=${CMAKE_C_COMPILER}
             -DMDH_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+            -DMDH_C_FLAGS=${CMAKE_C_FLAGS}
+            -DMDH_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
+            -DMDH_SANITIZER_RUNTIME_DIR=${MDH_SANITIZER_RUNTIME_DIR}
             -P ${CMAKE_SOURCE_DIR}/tests/consumer_smoke.cmake
     )
     set_tests_properties(mdh_consumer_smoke PROPERTIES LABELS "consumer")
+endif()
+
+string(FIND "${CMAKE_C_FLAGS}" "-fsanitize=" MDH_SANITIZER_FLAG_INDEX)
+if(MDH_SANITIZER_FLAG_INDEX GREATER -1)
+    foreach(mdh_test_name IN ITEMS mdh_tests mdh_internal_tests mdh_oracle_tests mdh_slow_tests mdh_consumer_smoke)
+        if(TARGET "${mdh_test_name}")
+            set_tests_properties("${mdh_test_name}" PROPERTIES ENVIRONMENT "PATH=${MDH_SANITIZER_TEST_PATH_ESCAPED}")
+        endif()
+    endforeach()
 endif()
 
 set(MDH_PACKAGE_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/microdh")
