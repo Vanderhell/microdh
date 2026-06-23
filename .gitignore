@@ -10,3 +10,4 @@ build_clang/
 build_ninja/
 /build-msvc-fresh
 /prompts
+/build-slow-release-gcc

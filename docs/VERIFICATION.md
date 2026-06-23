@@ -126,6 +126,18 @@ This file contains only commands and results executed during this task.
 - `C:\msys64\ucrt64\bin\cmake.exe --build build-fast-gcc-debug-current --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
 - `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-fast-gcc-debug-current --output-on-failure` -> `4/4` tests passed in `65.97 sec` total time; oracle label time `51.50 sec`
 
+## Slow iteration verification
+
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-slow-release-gcc -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DMDH_BUILD_TESTS=OFF -DMDH_BUILD_INTERNAL_TESTS=OFF -DMDH_BUILD_DIFFERENTIAL_TESTS=OFF -DMDH_BUILD_SLOW_TESTS=ON -DCMAKE_BUILD_TYPE=Release` -> configured with GNU 16.1.0
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-slow-release-gcc --target mdh_slow_tests --parallel` -> built `mdh_slow_tests.exe`
+- `.\build-slow-release-gcc\mdh_slow_tests.exe` -> passed in `794.6 sec`; `[case 1] test_01_one_million_iterations` and `All 1000001 checks passed across 1 cases`
+
+## Fast slice after slow verification
+
+- `C:\msys64\ucrt64\bin\cmake.exe -S . -B build-fast-gcc-release-slowstatus -G Ninja -DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMDH_BUILD_TESTS=ON -DMDH_BUILD_INTERNAL_TESTS=ON -DMDH_BUILD_DIFFERENTIAL_TESTS=ON -DMDH_STRICT_WARNINGS=ON -DMDH_BUILD_SLOW_TESTS=OFF -DCMAKE_BUILD_TYPE=Release` -> configured with GNU 16.1.0
+- `C:\msys64\ucrt64\bin\cmake.exe --build build-fast-gcc-release-slowstatus --parallel` -> built `libmicrodh.a`, `mdh_tests.exe`, `mdh_internal_tests.exe`, and `mdh_oracle_tests.exe`
+- `C:\msys64\ucrt64\bin\ctest.exe --test-dir build-fast-gcc-release-slowstatus --output-on-failure` -> `4/4` tests passed in `15.09 sec` total time; oracle label time `9.30 sec`
+
 ## Current cleanup
 
 - `C:\msys64\ucrt64\bin\cppcheck.exe --inline-suppr --std=c11 --language=c --enable=warning,style,performance,portability --error-exitcode=1 -Iinclude -Itests src tests include\mdh.h` -> exited `0`
